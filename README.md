@@ -8,6 +8,8 @@
 
 ## ♦ Materiales Necesarios
 
+## ♦ Codigo De Arduino 
+
 ## ♦ Codigo ChatBot - Streamlit
 ### Concideraciones Previas
 Este chatbot usa la API de Gemini. Para ejecutarlo se necesita una clave propia:
