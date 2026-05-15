@@ -1,0 +1,127 @@
+// Librería para comunicación Serial por software (necesaria si usas Bluetooth en pines que no sean 0 y 1)
+// Si usas Serial por USB (pines 0 y 1), NO necesitas esta librería.
+#include <SoftwareSerial.h>
+ 
+// --- Configuración de pines ---
+// Pines para el módulo Bluetooth (HC-05/HC-06)
+// Conectar el TX del HC-05 al RX del Arduino (pin 10)
+// Conectar el RX del HC-05 al TX del Arduino (pin 11) - ¡IMPORTANTE! Usar un divisor de voltaje para proteger el pin RX del Arduino si el HC-05 es 5V.
+// Si usas Serial por USB, ignora estas líneas de SoftwareSerial.
+const int bluetoothRx = 10; // Pin RX para SoftwareSerial
+const int bluetoothTx = 11; // Pin TX para SoftwareSerial
+SoftwareSerial btSerial(bluetoothRx, bluetoothTx); // Creamos un objeto SoftwareSerial
+ 
+// Pines para el Driver de Motor L298N
+// Configuración para el Motor Izquierdo
+const int motorIzquierdoDir = 2;   // Pin de dirección (IN1 o IN3)
+const int motorIzquierdoPWM = 3;   // Pin de velocidad (ENA o ENB) - debe ser un pin PWM (con ~)
+ 
+// Configuración para el Motor Derecho
+const int motorDerechoDir = 4;    // Pin de dirección (IN2 o IN4)
+const int motorDerechoPWM = 5;    // Pin de velocidad (ENA o ENB) - debe ser un pin PWM (con ~)
+ 
+// Velocidad base para los motores (0-255)
+// Puedes ajustar esto para controlar qué tan rápido va el carro.
+const int velocidadBase = 200; // Por ejemplo, 200 de 255
+ 
+// Variable para almacenar el comando recibido
+char comandoRecibido;
+ 
+void setup() {
+  // Inicializar comunicación serial (para depuración y/o si usas Serial por USB)
+  Serial.begin(9600); // Asegúrate de que este baud rate coincida con el de tu script Python
+  Serial.println("Arduino iniciado. Esperando comandos...");
+ 
+  // Inicializar comunicación Bluetooth (si la estás usando)
+  btSerial.begin(9600); // Asegúrate de que este baud rate coincida con el de tu script Python y el del módulo Bluetooth
+  btSerial.println("Bluetooth iniciado. Esperando comandos...");
+ 
+  // Configurar los pines de los motores como SALIDA
+  pinMode(motorIzquierdoDir, OUTPUT);
+  pinMode(motorIzquierdoPWM, OUTPUT);
+  pinMode(motorDerechoDir, OUTPUT);
+  pinMode(motorDerechoPWM, OUTPUT);
+ 
+  // Detener los motores al iniciar para asegurar una posición segura
+  detenerCarro();
+}
+ 
+void loop() {
+  // Comprobar si hay datos disponibles en el puerto Serial (USB)
+  if (Serial.available() > 0) {
+    comandoRecibido = Serial.read(); // Leer el carácter
+    ejecutarComando(comandoRecibido); // Ejecutar la acción correspondiente
+  }
+ 
+  // Comprobar si hay datos disponibles en el puerto Bluetooth (SoftwareSerial)
+  if (btSerial.available() > 0) {
+    comandoRecibido = btSerial.read(); // Leer el carácter
+    ejecutarComando(comandoRecibido); // Ejecutar la acción correspondiente
+  }
+}
+ 
+// Función para ejecutar el comando recibido
+void ejecutarComando(char comando) {
+  Serial.print("Comando recibido: ");
+  Serial.println(comando); // Imprimir el comando para depuración (se verá en el Monitor Serial de Arduino IDE)
+  btSerial.print("Comando recibido: ");
+  btSerial.println(comando); // Imprimir el comando para depuración (se verá en la terminal Bluetooth)
+ 
+  switch (comando) {
+    case 'F': // Avanzar
+      avanzarCarro();
+      break;
+    case 'L': // Girar Izquierda
+      girarIzquierda();
+      break;
+    case 'R': // Girar Derecha
+      girarDerecha();
+      break;
+    case 'S': // Detener
+      detenerCarro();
+      break;
+    default:
+      // Comando desconocido
+      Serial.println("Comando desconocido.");
+      btSerial.println("Comando desconocido.");
+      detenerCarro(); // Por seguridad, detén el carro si recibes un comando inválido
+      break;
+  }
+}
+ 
+// --- Funciones de control de movimiento del carro ---
+ 
+void avanzarCarro() {
+  // Motor Izquierdo: Hacia adelante
+  digitalWrite(motorIzquierdoDir, HIGH); // HIGH para una dirección, LOW para la otra
+  analogWrite(motorIzquierdoPWM, velocidadBase); // Control de velocidad (PWM)
+ 
+  // Motor Derecho: Hacia adelante
+  digitalWrite(motorDerechoDir, HIGH); // Asegúrate de que la dirección sea la misma que el izquierdo para ir recto
+  analogWrite(motorDerechoPWM, velocidadBase);
+}
+ 
+void detenerCarro() {
+  analogWrite(motorIzquierdoPWM, 0); // Apagar motor izquierdo
+  analogWrite(motorDerechoPWM, 0);   // Apagar motor derecho
+}
+ 
+void girarIzquierda() {
+  // Para girar a la izquierda, puedes hacer que el motor izquierdo vaya hacia atrás y el derecho hacia adelante (giro sobre el eje)
+  // O el motor izquierdo se detenga y el derecho avance (giro más amplio).
+  // Aquí un ejemplo de giro sobre el eje:
+  digitalWrite(motorIzquierdoDir, LOW); // Motor izquierdo hacia atrás
+  analogWrite(motorIzquierdoPWM, velocidadBase);
+ 
+  digitalWrite(motorDerechoDir, HIGH); // Motor derecho hacia adelante
+  analogWrite(motorDerechoPWM, velocidadBase);
+}
+ 
+void girarDerecha() {
+  // Similar al giro a la izquierda, pero inverso
+  digitalWrite(motorIzquierdoDir, HIGH); // Motor izquierdo hacia adelante
+  analogWrite(motorIzquierdoPWM, velocidadBase);
+ 
+  digitalWrite(motorDerechoDir, LOW); // Motor derecho hacia atrás
+  analogWrite(motorDerechoPWM, velocidadBase);
+}
